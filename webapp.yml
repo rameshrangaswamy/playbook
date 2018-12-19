@@ -1,0 +1,47 @@
+---
+- hosts: mynode
+
+  user: ansible
+  connection: ssh
+  gather_facts: no
+  become_user: root
+  tasks:
+   - name: install add-apt-repository
+     become_user: root
+     apt: name=software-properties-common state=latest
+
+   - name: add oracle java repository
+     become: yes
+     apt_repository: repo='ppa:webupd8team/java'
+
+   - name: accpet java 8 license
+     become: yes
+     debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
+
+   - name: install oracle java 8
+     become: yes
+     apt: name={{item}} state=latest
+     with_items:
+      - oracle-java8-installer
+      - ca-certificates
+      - oracle-java8-set-default
+
+   - name: folder should be created
+     become: yes
+     file:
+      state: directory
+      path: /home/ansible/tomcat
+      mode: 8777
+
+   - name: download tomcat
+     become: yes
+     get_url: url=https://www-eu.apache.org/dist/tomcat/tomcat-8/v8.5.35/bin/apache-tomcat-8.5.35.tar.gz dest=/home/ansible/tomcat
+   - name: extract archive
+     become: yes
+     unarchive: src=/home/ansible/tomcat/apache-tomcat-8.5.35.tar.gz dest=/home/ansible/tomcat remote_src=yes
+   - name: copying war file
+     become: yes
+     copy: src=/home/ansible/myfiles/webapp.war dest=/home/ansible/tomcat/apache-tomcat-8.5.35/webapps
+   - name: start tomcat
+     become: yes
+     command: "nohup /home/ansible/tomcat/apache-tomcat-8.5.35/bin/startup.sh"
